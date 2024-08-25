@@ -1,32 +1,15 @@
 <template>
-  <div class="container">
-    <h1>云上私密聊天室</h1>
-    <div class="chat-area">
-      <div class="user-list">
-        <p>当前在线: <span>{{ userNum }}</span></p>
-        <div id="user_list" ref="userList"></div>
-      </div>
-      <div id="msg_list" ref="msgList" class="message-list">
-        <p v-for="(message, index) in messages" :key="index" ref="message"></p>
-      </div>
-    </div>
-    <textarea id="msg_box" v-model="message" @keydown.enter.prevent="sendMessage"></textarea>
-    <button @click="sendMessage">发送</button>
-  </div>
+  
 </template>
 
 <script>
-import { ref, onMounted, onUnmounted, onUpdated } from 'vue';
-
+import { ref, onMounted, onUnmounted } from 'vue';
 export default {
-  setup() {
-    const messages = ref([]);
-    const msgList = ref(null);
-    const message = ref('');
-
+    setup() {
     const userNum = ref(0);
     const userList = ref('');
     const messageList = ref('');
+    const message = ref('');
     const uname = ref(prompt('请输入用户名', 'user' + uuid(8, 16)));
     let ws = null;
 
@@ -39,7 +22,7 @@ export default {
 
       ws.onmessage = (e) => {
         const msg = JSON.parse(e.data);
-        let sender;
+        let sender, user_name, name_list, change_type;
 
         switch (msg.type) {
           case 'system':
@@ -53,6 +36,11 @@ export default {
             return;
           case 'login':
           case 'logout':
+            user_name = msg.content;
+            name_list = msg.user_list;
+            change_type = msg.type;
+            dealUser(user_name, change_type, name_list);
+            return;
         }
 
         const data = sender + msg.content;
@@ -62,12 +50,6 @@ export default {
       ws.onerror = () => {
         listMsg('系统消息 : 出错了,请退出重试.');
       };
-    });
-
-    onUpdated(() => {
-      if (msgList.value) {
-        msgList.value.scrollTop = msgList.value.scrollHeight;
-      }
     });
 
     onUnmounted(() => {
@@ -86,9 +68,18 @@ export default {
     };
 
     const listMsg = (data) => {
-      messages.value.push(data);
+      messageList.value += `<p>${data}</p>`;
     };
 
+    const dealUser = (user_name, type, name_list) => {
+      userList.value = '';
+      name_list.forEach((name) => {
+        userList.value += `<p>${name}</p>`;
+      });
+      userNum.value = name_list.length;
+      const change = type === 'login' ? '上线' : '下线';
+      listMsg(`系统消息: ${user_name} 已${change}`);
+    };
 
     const sendMsg = (msg) => {
       if (ws && ws.readyState === WebSocket.OPEN) {
@@ -132,43 +123,6 @@ export default {
 };
 </script>
 
-<style scoped>
-.container {
-  width: 800px;
-  height: 600px;
-  margin: 30px auto;
-  text-align: center;
-}
+<style>
 
-.chat-area {
-  width: 800px;
-  border: 1px solid gray;
-  height: 300px;
-  display: flex;
-}
-
-.user-list {
-  width: 200px;
-  height: 300px;
-  text-align: left;
-  border-right: 1px solid gray;
-  overflow: auto;
-}
-
-.message-list {
-  width: 598px;
-  border-left: 1px solid gray;
-  height: 300px;
-  overflow-y: auto;
-}
-
-textarea {
-  width: 500px;
-  height: 100px;
-  margin-top: 10px;
-}
-
-button {
-  margin-left: 10px;
-}
 </style>
